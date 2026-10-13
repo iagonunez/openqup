@@ -36,10 +36,6 @@ release's `SHA256SUMS` (and its signature), put it in `~/.local/bin` (Windows:
 If you already have Rust: `cargo install --locked --git https://github.com/iagonunez/openqup`, then
 `openqup install`.
 
-While the OpenQ repository is private, openqup needs read access to it: set `OPENQ_GITHUB_TOKEN`
-to a GitHub token (fine-grained, "Contents: read-only" on the repository), log in with
-`gh auth login`, or use git with your SSH key: `openqup install --git git@github.com:iagonunez/OpenQ.git`.
-
 ## Use
 
 ```text
@@ -132,8 +128,7 @@ python3 -I tools/third_party_licenses.py                            # after depe
 - `.github/workflows/release.yml`: tests on push; a `v*` tag builds, signs and publishes the
   binaries with `SHA256SUMS`, `install.sh` and `install.ps1`.
 - `.github/workflows/e2e.yml` (run by hand): installs OpenQ from scratch on Linux, macOS (arm64
-  and Intel) and Windows runners, checks the result and uninstalls it. Needs the `OPENQ_TOKEN`
-  secret while OpenQ is private.
+  and Intel) and Windows runners, checks the result and uninstalls it.
 - Pinned versions and checksums (FFmpeg, NASM, LLVM) are constants at the top of
   `src/platform/macos.rs` and `src/platform/windows.rs`; the FFmpeg series must match what
   OpenQ's `ffmpeg-next` supports.
