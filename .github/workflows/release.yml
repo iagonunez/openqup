@@ -1,0 +1,169 @@
+# Tests openqup on every push. A `v*` tag also builds openqup for each system, code-signs it
+# when the signing secrets are set, and publishes a release with the binaries, SHA256SUMS and the
+# bootstrap scripts (install.sh, install.ps1).
+#
+# Signing secrets (all optional; without them the binaries are published unsigned):
+#   macOS (Apple Developer Program, "Developer ID Application" certificate):
+#     MACOS_CERTIFICATE           base64 of the .p12 export (certificate + private key)
+#     MACOS_CERTIFICATE_PASSWORD  its password
+#     MACOS_SIGN_IDENTITY         e.g. "Developer ID Application: Name (TEAMID)"
+#     APPLE_ID, APPLE_TEAM_ID, APPLE_APP_PASSWORD  notarisation (app-specific password)
+#   Windows, either Azure Artifact Signing (formerly Trusted Signing):
+#     AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET,
+#     AZURE_SIGNING_ENDPOINT (e.g. https://weu.codesigning.azure.net/),
+#     AZURE_SIGNING_ACCOUNT, AZURE_CERTIFICATE_PROFILE
+#   or an Authenticode certificate file:
+#     WINDOWS_CERTIFICATE (base64 .pfx), WINDOWS_CERTIFICATE_PASSWORD
+name: Release
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-15, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install stable --profile minimal --component clippy && rustup default stable
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo test --locked
+
+  build:
+    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-22.04, target: x86_64-unknown-linux-gnu }      # older glibc = runs on more distributions
+          - { os: ubuntu-22.04-arm, target: aarch64-unknown-linux-gnu }
+          - { os: macos-15, target: aarch64-apple-darwin }
+          - { os: macos-15, target: x86_64-apple-darwin }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc }
+    runs-on: ${{ matrix.os }}
+    defaults: { run: { shell: bash } }
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install stable --profile minimal --target ${{ matrix.target }} && rustup default stable
+      - run: cargo build --release --locked --target ${{ matrix.target }}
+        env: { MACOSX_DEPLOYMENT_TARGET: "11.0" }
+      - name: Stage
+        run: |
+          mkdir dist
+          ext=""; [[ "${{ matrix.target }}" == *windows* ]] && ext=".exe"
+          cp "target/${{ matrix.target }}/release/openqup$ext" "dist/openqup-${{ matrix.target }}$ext"
+
+      - name: Sign and notarise (macOS)
+        if: runner.os == 'macOS'
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          bin="dist/openqup-${{ matrix.target }}"
+          if [ -z "$MACOS_CERTIFICATE" ]; then echo "No macOS certificate: unsigned"; exit 0; fi
+          kc="$RUNNER_TEMP/signing.keychain-db"; pw="$(openssl rand -hex 16)"
+          security create-keychain -p "$pw" "$kc"
+          security set-keychain-settings -lut 21600 "$kc"
+          security unlock-keychain -p "$pw" "$kc"
+          echo "$MACOS_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$kc" -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          rm "$RUNNER_TEMP/cert.p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$pw" "$kc" >/dev/null
+          security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"')
+          codesign --force --options runtime --timestamp --sign "$MACOS_SIGN_IDENTITY" "$bin"
+          codesign --verify --strict --verbose=2 "$bin"
+          if [ -n "$APPLE_ID" ]; then
+            # A bare binary can't be stapled; Gatekeeper looks the ticket up online.
+            ditto -c -k "$bin" "$RUNNER_TEMP/notarize.zip"
+            xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
+              --password "$APPLE_APP_PASSWORD" --wait
+          fi
+
+      - name: Check Windows signing secrets
+        if: runner.os == 'Windows'
+        id: winsign
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+        run: |
+          echo "azure=$([ -n "$AZURE_CLIENT_ID" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "pfx=$([ -n "$WINDOWS_CERTIFICATE" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - name: Sign (Windows, Azure Artifact Signing)
+        if: steps.winsign.outputs.azure == 'true'
+        uses: azure/artifact-signing-action@v2
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.AZURE_CERTIFICATE_PROFILE }}
+          files-folder: ${{ github.workspace }}\dist
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+      - name: Sign (Windows, certificate file)
+        if: steps.winsign.outputs.azure != 'true' && steps.winsign.outputs.pfx == 'true'
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $pfx = Join-Path $env:RUNNER_TEMP 'cert.pfx'
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName | Select-Object -Last 1
+          & $signtool.FullName sign /f $pfx /p $env:WINDOWS_CERTIFICATE_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 dist\openqup-${{ matrix.target }}.exe
+          Remove-Item $pfx
+          & $signtool.FullName verify /pa dist\openqup-${{ matrix.target }}.exe
+
+      - uses: actions/upload-artifact@v4
+        with: { name: "openqup-${{ matrix.target }}", path: dist/* }
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { path: dist, merge-multiple: true }
+      - name: Publish
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          cp install.sh install.ps1 LICENSE THIRD_PARTY_LICENSES.md dist/
+          (cd dist && sha256sum openqup-* install.sh install.ps1 > SHA256SUMS)
+          cat > notes.md <<'EOF'
+          Installs OpenQ by building it from source. Linux and macOS:
+
+          ```sh
+          curl --proto '=https' --tlsv1.2 -fsSL https://github.com/${{ github.repository }}/releases/latest/download/install.sh | sh
+          ```
+
+          Windows (PowerShell):
+
+          ```powershell
+          powershell -ExecutionPolicy Bypass -c "irm https://github.com/${{ github.repository }}/releases/latest/download/install.ps1 | iex"
+          ```
+
+          `SHA256SUMS` lists the checksum of every file; the bootstrap scripts check them.
+          EOF
+          gh release create "$GITHUB_REF_NAME" dist/* --title "openqup $GITHUB_REF_NAME" --notes-file notes.md --verify-tag

@@ -1,0 +1,56 @@
+# End to end: openqup installs OpenQ from scratch on each system (Rust, build dependencies,
+# FFmpeg, build, app, shortcuts), checks the result, and uninstalls it. Run it by hand
+# (Actions → End to end → Run workflow).
+#
+# While the OpenQ repository is private, set the OPENQ_TOKEN secret to a GitHub token that can
+# read it (fine-grained, "Contents: read-only" on that repository).
+name: End to end
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: OpenQ tag, branch or commit (empty = what `openqup install` picks)
+        required: false
+
+env:
+  CARGO_TERM_COLOR: always
+  OPENQ_GITHUB_TOKEN: ${{ secrets.OPENQ_TOKEN }}
+
+jobs:
+  install:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-15, macos-15-intel, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults: { run: { shell: bash } }
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install stable --profile minimal && rustup default stable
+      - run: cargo build --release --locked
+      - name: Cache openqup's dependencies (macOS FFmpeg build, Windows LLVM/FFmpeg)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Application Support/openqup/deps
+            ~/AppData/Local/openqup/deps
+          key: openqup-deps-${{ matrix.os }}-${{ hashFiles('src/platform/*.rs') }}
+      - name: Install OpenQ
+        run: |
+          ref="${{ github.event.inputs.ref }}"
+          ./target/release/openqup install -y ${ref:+--ref "$ref"}
+      - name: Check
+        run: |
+          ./target/release/openqup doctor
+          case "${{ runner.os }}" in
+            Linux)   ~/.local/bin/openq --list-displays || true; test -x ~/.local/bin/openq ;;
+            macOS)   codesign --verify --deep --strict ~/Applications/OpenQ.app
+                     otool -L ~/Applications/OpenQ.app/Contents/MacOS/OpenQ ;;
+            Windows) ls "$LOCALAPPDATA/Programs/OpenQ"; test -f "$LOCALAPPDATA/Programs/OpenQ/OpenQ.exe"
+                     reg query 'HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\OpenQ' ;;
+          esac
+      - name: Update (already current)
+        run: ./target/release/openqup update -y
+      - name: Uninstall
+        run: ./target/release/openqup uninstall -y
