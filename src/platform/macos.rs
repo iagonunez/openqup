@@ -167,6 +167,7 @@ fn info_plist(version: &str) -> String {
   <key>CFBundleIdentifier</key><string>io.github.iagonunez.openq</string>
   <key>CFBundleExecutable</key><string>OpenQ</string>
   <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleIconFile</key><string>OpenQ</string>
   <key>CFBundleShortVersionString</key><string>{version}</string>
   <key>CFBundleVersion</key><string>{version}</string>
   <key>NSHighResolutionCapable</key><true/>
@@ -224,6 +225,11 @@ pub fn install(_dirs: &Dirs, opts: &Options, built: &Built, _yes: bool) -> Resul
     let exe = contents.join("MacOS/OpenQ");
     util::copy(&built.exe, &exe)?;
     std::fs::write(contents.join("Info.plist"), info_plist(built.version))?;
+    // The app icon (OpenQ 0.2 and later ship it; Info.plist names it either way).
+    let icns = built.src.join("assets/icon/OpenQ.icns");
+    if icns.is_file() {
+        util::copy(&icns, &contents.join("Resources/OpenQ.icns"))?;
+    }
     super::write_licences(built, &contents.join("Resources"))?;
     if let Some(ff) = &built.env.ffmpeg {
         copy_dylibs(&ff.dir.join("lib"), &contents.join("Frameworks"))?;
