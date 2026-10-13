@@ -103,7 +103,7 @@ impl Http {
             std::fs::create_dir_all(dir)?;
         }
         ui::info(format!("Downloading {url}"));
-        let mut resp = self.get(url, "application/octet-stream")?;
+        let mut resp = self.get(url, "*/*")?;
         let total = resp.headers().get("content-length").and_then(|v| v.to_str().ok()?.parse().ok());
         let part = dest.with_extension("part");
         let mut file = std::fs::File::create(&part).with_context(|| format!("couldn't create {}", part.display()))?;
