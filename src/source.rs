@@ -95,7 +95,7 @@ pub fn local_commit(dir: &std::path::Path) -> String {
 /// Fetches (or reuses) the source for `commit`.
 pub fn fetch(http: &Http, dirs: &Dirs, opts: &Options, label: &str, commit: &str) -> Result<Source> {
     let dir = dirs.src().join(commit);
-    if dir.join("Cargo.toml").is_file() && dir.join(".openqup-complete").is_file() {
+    if dir.join("Cargo.toml").is_file() && dir.join(".oqman-complete").is_file() {
         ui::info(format!("Source {label} ({}) already unpacked", &commit[..12]));
     } else if let Some(url) = &opts.git {
         util::remove(&dir)?;
@@ -105,7 +105,7 @@ pub fn fetch(http: &Http, dirs: &Dirs, opts: &Options, label: &str, commit: &str
         git(&["fetch", "-q", "--depth", "1", url, commit])?;
         git(&["checkout", "-q", "FETCH_HEAD"])?;
         util::remove(&dir.join(".git"))?;
-        std::fs::write(dir.join(".openqup-complete"), commit)?;
+        std::fs::write(dir.join(".oqman-complete"), commit)?;
     } else {
         let repo = &opts.repo;
         let archive = dirs.downloads().join(format!("openq-{commit}.tar.gz"));
@@ -113,7 +113,7 @@ pub fn fetch(http: &Http, dirs: &Dirs, opts: &Options, label: &str, commit: &str
         // and the download is over HTTPS.
         http.download(&format!("https://api.github.com/repos/{repo}/tarball/{commit}"), &archive, Sum::None)?;
         util::extract(&archive, &dir, 1)?;
-        std::fs::write(dir.join(".openqup-complete"), commit)?;
+        std::fs::write(dir.join(".oqman-complete"), commit)?;
         let _ = std::fs::remove_file(&archive);
     }
     // Older source trees aren't needed any more (the build cache lives elsewhere).

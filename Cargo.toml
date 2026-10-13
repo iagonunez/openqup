@@ -1,9 +1,9 @@
 [package]
-name = "openqup"
+name = "oqman"
 version = "0.1.2"
 edition = "2024"
 license = "Apache-2.0"
-repository = "https://github.com/iagonunez/openqup"
+repository = "https://github.com/iagonunez/oqman"
 description = "Installs OpenQ by building it from source, with its build dependencies"
 publish = false
 

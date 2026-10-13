@@ -47,12 +47,12 @@ pub fn prepare(dirs: &Dirs, http: &Http, opts: &Options, yes: bool) -> Result<Bu
         ui::info("Xcode Command Line Tools: ok");
     } else {
         ui::info("The Xcode Command Line Tools (Apple's compiler and linker) are needed. macOS shows Apple's");
-        ui::info("installer and licence; openqup only starts it.");
+        ui::info("installer and licence; oqman only starts it.");
         if !ui::confirm("Open Apple's installer for the Command Line Tools?", yes)? {
-            bail!("The Command Line Tools are needed: run `xcode-select --install`, then openqup again.");
+            bail!("The Command Line Tools are needed: run `xcode-select --install`, then oqman again.");
         }
         let _ = util::run(Command::new("xcode-select").arg("--install"));
-        bail!("Finish installing the Command Line Tools in Apple's window, then run openqup again.");
+        bail!("Finish installing the Command Line Tools in Apple's window, then run oqman again.");
     }
     let mut env = BuildEnv { no_default_features: opts.no_default_features, features: opts.features.clone(), ..Default::default() };
     if !Wanted::from(opts.no_default_features, &opts.features).video {
@@ -78,22 +78,22 @@ fn ffmpeg_dir(dirs: &Dirs) -> PathBuf {
 }
 
 fn ffmpeg_info(prefix: &Path) -> Ffmpeg {
-    let lic = prefix.join("share/openqup");
+    let lic = prefix.join("share/oqman");
     Ffmpeg {
         dir: prefix.to_path_buf(),
         licence_files: ["COPYING.LGPLv2.1", "LICENSE.md", "configure-output.txt"].iter().map(|f| lic.join(f)).collect(),
         origin: format!(
-            "FFmpeg {} compiled on this Mac by openqup from the official source tarball \
+            "FFmpeg {} compiled on this Mac by oqman from the official source tarball \
              (https://ffmpeg.org/releases/ffmpeg-{}.tar.xz, SHA-256 {}); configuration in configure-output.txt.",
             FFMPEG.0, FFMPEG.0, FFMPEG.1
         ),
     }
 }
 
-/// Builds FFmpeg once (several minutes) into openqup's home; later installs reuse it.
+/// Builds FFmpeg once (several minutes) into oqman's home; later installs reuse it.
 fn ensure_ffmpeg(dirs: &Dirs, http: &Http) -> Result<Ffmpeg> {
     let prefix = ffmpeg_dir(dirs);
-    let marker = prefix.join(".openqup-complete");
+    let marker = prefix.join(".oqman-complete");
     if std::fs::read_to_string(&marker).is_ok_and(|s| s.trim() == FFMPEG_CONFIG_REV.to_string()) {
         ui::info(format!("FFmpeg {} (LGPL): {}", FFMPEG.0, prefix.display()));
         return Ok(ffmpeg_info(&prefix));
@@ -108,7 +108,7 @@ fn ensure_ffmpeg(dirs: &Dirs, http: &Http) -> Result<Ffmpeg> {
     let work = dirs.deps().join("ffmpeg-build");
     util::extract(&tarball, &work, 1)?;
     util::remove(&prefix)?;
-    let lic = prefix.join("share/openqup");
+    let lic = prefix.join("share/oqman");
     std::fs::create_dir_all(&lic)?;
 
     let path_var = path.iter().fold(std::env::var_os("PATH").unwrap_or_default(), |acc, p| {
@@ -219,7 +219,7 @@ pub fn install(_dirs: &Dirs, opts: &Options, built: &Built, _yes: bool) -> Resul
     ui::step("Installing");
     let apps = applications()?;
     let app = apps.join("OpenQ.app");
-    let staging = apps.join(".OpenQ.app.openqup");
+    let staging = apps.join(".OpenQ.app.oqman");
     util::remove(&staging)?;
     let contents = staging.join("Contents");
     let exe = contents.join("MacOS/OpenQ");
@@ -299,7 +299,7 @@ pub fn doctor(dirs: &Dirs, opts: &Options) {
     if opts.system_ffmpeg {
         ui::info("FFmpeg: the system's (pkg-config)");
     } else {
-        let built = ffmpeg_dir(dirs).join(".openqup-complete").is_file();
+        let built = ffmpeg_dir(dirs).join(".oqman-complete").is_file();
         ui::info(format!("FFmpeg {} (LGPL): {}", FFMPEG.0, if built { "built" } else { "not built yet" }));
     }
     let identities = util::output(Command::new("security").args(["find-identity", "-v", "-p", "codesigning"])).unwrap_or_default();

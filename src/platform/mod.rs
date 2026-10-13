@@ -104,12 +104,12 @@ fn ffmpeg_readme(origin: &str) -> String {
     format!(
         "# FFmpeg in this OpenQ installation\n\n\
          OpenQ plays video with the FFmpeg libraries (libavcodec, libavformat, libavutil, libavdevice,\n\
-         libavfilter, libswscale, libswresample). openqup installed them next to OpenQ as separate\n\
+         libavfilter, libswscale, libswresample). oqman installed them next to OpenQ as separate\n\
          shared libraries.\n\n\
          - **Licence:** GNU Lesser General Public License 2.1 or later (the licence file next to this\n  \
          one). Copyright the FFmpeg developers, <https://ffmpeg.org>.\n\
          - **Build:** {origin}\n\
-         - **LGPL-only:** configured without GPL, version-3 or nonfree components; openqup refuses\n  \
+         - **LGPL-only:** configured without GPL, version-3 or nonfree components; oqman refuses\n  \
          any other build.\n\
          - **Source:** <https://ffmpeg.org/download.html> and <https://github.com/FFmpeg/FFmpeg>.\n\
          - **Replacing them:** the libraries are loaded dynamically, so you may swap in your own build\n  \

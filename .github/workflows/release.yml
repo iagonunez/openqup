@@ -1,4 +1,4 @@
-# Tests openqup on every push. A `v*` tag also builds openqup for each system, code-signs it
+# Tests oqman on every push. A `v*` tag also builds oqman for each system, code-signs it
 # when the signing secrets are set, and publishes a release with the binaries, SHA256SUMS and the
 # bootstrap scripts (install.sh, install.ps1).
 #
@@ -65,7 +65,7 @@ jobs:
         run: |
           mkdir dist
           ext=""; [[ "${{ matrix.target }}" == *windows* ]] && ext=".exe"
-          cp "target/${{ matrix.target }}/release/openqup$ext" "dist/openqup-${{ matrix.target }}$ext"
+          cp "target/${{ matrix.target }}/release/oqman$ext" "dist/oqman-${{ matrix.target }}$ext"
 
       - name: Sign and notarise (macOS)
         if: runner.os == 'macOS'
@@ -77,7 +77,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
         run: |
-          bin="dist/openqup-${{ matrix.target }}"
+          bin="dist/oqman-${{ matrix.target }}"
           if [ -z "$MACOS_CERTIFICATE" ]; then echo "No macOS certificate: unsigned"; exit 0; fi
           kc="$RUNNER_TEMP/signing.keychain-db"; pw="$(openssl rand -hex 16)"
           security create-keychain -p "$pw" "$kc"
@@ -131,12 +131,12 @@ jobs:
           $pfx = Join-Path $env:RUNNER_TEMP 'cert.pfx'
           [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
           $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName | Select-Object -Last 1
-          & $signtool.FullName sign /f $pfx /p $env:WINDOWS_CERTIFICATE_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 dist\openqup-${{ matrix.target }}.exe
+          & $signtool.FullName sign /f $pfx /p $env:WINDOWS_CERTIFICATE_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 dist\oqman-${{ matrix.target }}.exe
           Remove-Item $pfx
-          & $signtool.FullName verify /pa dist\openqup-${{ matrix.target }}.exe
+          & $signtool.FullName verify /pa dist\oqman-${{ matrix.target }}.exe
 
       - uses: actions/upload-artifact@v4
-        with: { name: "openqup-${{ matrix.target }}", path: dist/* }
+        with: { name: "oqman-${{ matrix.target }}", path: dist/* }
 
   release:
     if: github.ref_type == 'tag'
@@ -150,7 +150,7 @@ jobs:
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
           cp install.sh install.ps1 LICENSE THIRD_PARTY_LICENSES.md dist/
-          (cd dist && sha256sum openqup-* install.sh install.ps1 > SHA256SUMS)
+          (cd dist && sha256sum oqman-* install.sh install.ps1 > SHA256SUMS)
           cat > notes.md <<'EOF'
           Installs OpenQ by building it from source. Linux and macOS:
 
@@ -166,4 +166,4 @@ jobs:
 
           `SHA256SUMS` lists the checksum of every file; the bootstrap scripts check them.
           EOF
-          gh release create "$GITHUB_REF_NAME" dist/* --title "openqup $GITHUB_REF_NAME" --notes-file notes.md --verify-tag
+          gh release create "$GITHUB_REF_NAME" dist/* --title "oqman $GITHUB_REF_NAME" --notes-file notes.md --verify-tag

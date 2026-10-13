@@ -1,4 +1,4 @@
-//! openqup's folders and what it installed (`state.json`).
+//! oqman's folders and what it installed (`state.json`).
 
 use std::path::{Path, PathBuf};
 
@@ -7,10 +7,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::util;
 
-/// openqup's own folder: sources, build cache, dependencies, a private Rust toolchain and
-/// `state.json`. `OPENQUP_HOME` overrides it.
+/// oqman's own folder: sources, build cache, dependencies, a private Rust toolchain and
+/// `state.json`. `OQMAN_HOME` overrides it.
 pub fn home() -> Result<PathBuf> {
-    if let Some(h) = std::env::var_os("OPENQUP_HOME").filter(|h| !h.is_empty()) {
+    if let Some(h) = std::env::var_os("OQMAN_HOME").filter(|h| !h.is_empty()) {
         return Ok(PathBuf::from(h));
     }
     let base = if cfg!(windows) {
@@ -23,7 +23,7 @@ pub fn home() -> Result<PathBuf> {
             None => util::home_dir()?.join(".local/share"),
         }
     };
-    Ok(base.join("openqup"))
+    Ok(base.join("oqman"))
 }
 
 /// Folders inside [`home`].
@@ -94,7 +94,7 @@ pub struct State {
     pub version: String,
     /// When (Unix seconds).
     pub installed_at: u64,
-    /// Files and folders the installation created outside openqup's home (app, shortcuts).
+    /// Files and folders the installation created outside oqman's home (app, shortcuts).
     pub installed: Vec<PathBuf>,
 }
 
@@ -166,7 +166,7 @@ mod tests {
 
     #[test]
     fn version_from_cargo_toml() {
-        let dir = std::env::temp_dir().join(format!("openqup-test-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("oqman-test-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join("Cargo.toml"), "[package]\nname = \"openq\"\nversion = \"0.3.1\"\n[dependencies]\nversion = \"9\"\n").unwrap();
         assert_eq!(source_version(&dir).unwrap(), "0.3.1");

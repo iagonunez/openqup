@@ -19,7 +19,7 @@ pub struct Http {
 
 /// Where a download's expected checksum comes from.
 pub enum Sum<'a> {
-    /// A SHA-256 hex digest known in advance (pinned in openqup, or published next to the file).
+    /// A SHA-256 hex digest known in advance (pinned in oqman, or published next to the file).
     Sha256(&'a str),
     /// No checksum is published: rely on HTTPS alone (the result is still printed).
     None,
@@ -34,7 +34,7 @@ impl Http {
         let tls = tls.provider(ureq::tls::TlsProvider::NativeTls);
         let config = ureq::Agent::config_builder()
             .tls_config(tls.build())
-            .user_agent(format!("openqup/{}", env!("CARGO_PKG_VERSION")))
+            .user_agent(format!("oqman/{}", env!("CARGO_PKG_VERSION")))
             .timeout_connect(Some(Duration::from_secs(30)))
             .timeout_recv_body(Some(Duration::from_secs(120)))
             .build();

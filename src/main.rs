@@ -1,7 +1,7 @@
-//! openqup installs OpenQ by building it from source on this computer, the way rustup installs
+//! oqman installs OpenQ by building it from source on this computer, the way rustup installs
 //! Rust: it gets a Rust toolchain, the build dependencies (FFmpeg and friends, each from its
 //! official source and under its own licence), the source of the chosen OpenQ version, builds
-//! it and installs the app with a menu entry. `openqup update` repeats that for newer versions.
+//! it and installs the app with a menu entry. `oqman update` repeats that for newer versions.
 
 mod net;
 mod platform;
@@ -20,15 +20,15 @@ use crate::platform::{BuildEnv, Built};
 use crate::state::{Dirs, Options, State};
 
 const USAGE: &str = "\
-openqup — installs OpenQ by building it from source
+oqman — installs OpenQ by building it from source
 
 Usage:
-  openqup install [options]   Build and install OpenQ (the newest release, unless --ref)
-  openqup update [-y] [--force]  Rebuild if the followed version moved (same options as install)
-  openqup uninstall [--purge] [-y]  Remove the app (--purge: also toolchain, FFmpeg, caches)
-  openqup versions            List the versions that can be installed
-  openqup doctor              Show what is installed and what the build needs
-  openqup --version | --help
+  oqman install [options]   Build and install OpenQ (the newest release, unless --ref)
+  oqman update [-y] [--force]  Rebuild if the followed version moved (same options as install)
+  oqman uninstall [--purge] [-y]  Remove the app (--purge: also toolchain, FFmpeg, caches)
+  oqman versions            List the versions that can be installed
+  oqman doctor              Show what is installed and what the build needs
+  oqman --version | --help
 
 Install options:
   --ref <tag|branch|commit>   Version to build (default: newest vX.Y.Z tag, else the main branch)
@@ -43,12 +43,12 @@ Install options:
                               \"Developer ID Application: Name (TEAMID)\" (default: ad hoc).
                               Windows: certificate SHA-1 thumbprint (default: unsigned)
   --notarize <profile>        macOS: notarise with this `notarytool store-credentials` profile
-  -y, --yes                   Don't ask; accept the installs openqup proposes
+  -y, --yes                   Don't ask; accept the installs oqman proposes
 
 Environment:
   OPENQ_GITHUB_TOKEN          GitHub token (or GH_TOKEN / GITHUB_TOKEN / `gh auth login`);
                               needed while the OpenQ repository is private
-  OPENQUP_HOME                openqup's folder (sources, build cache, dependencies)
+  OQMAN_HOME                oqman's folder (sources, build cache, dependencies)
 ";
 
 struct Args {
@@ -88,7 +88,7 @@ fn parse(mut args: impl Iterator<Item = String>) -> Result<Args> {
             "--sign" => (a.opts.sign, a.given) = (Some(value("--sign")?), true),
             "--notarize" => (a.opts.notarize, a.given) = (Some(value("--notarize")?), true),
             cmd if !cmd.starts_with('-') && a.command.is_empty() => a.command = cmd.to_string(),
-            other => bail!("unknown argument `{other}` (see openqup --help)"),
+            other => bail!("unknown argument `{other}` (see oqman --help)"),
         }
     }
     if a.opts.notarize.is_some() && a.opts.sign.is_none() {
@@ -112,14 +112,14 @@ fn run() -> Result<()> {
     let dirs = Dirs { home: state::home()? };
     match args.command.as_str() {
         "help" => print!("{USAGE}"),
-        "version" => println!("openqup {}", env!("CARGO_PKG_VERSION")),
+        "version" => println!("oqman {}", env!("CARGO_PKG_VERSION")),
         "install" => {
             let _lock = lock(&dirs)?;
             install(&dirs, &args.opts, args.yes, None)?;
         }
         "update" => {
             let _lock = lock(&dirs)?;
-            let saved = dirs.load()?.context("OpenQ isn't installed yet: run `openqup install`")?;
+            let saved = dirs.load()?.context("OpenQ isn't installed yet: run `oqman install`")?;
             let opts = if args.given { args.opts.clone() } else { saved.options.clone() };
             install(&dirs, &opts, args.yes, Some((&saved, args.force)))?;
         }
@@ -136,24 +136,24 @@ fn run() -> Result<()> {
             let mut tags = source::tags(&http, &opts)?;
             tags.retain(|t| source::newest_version([t.as_str()].into_iter()).is_some());
             if tags.is_empty() {
-                println!("No releases tagged yet; `openqup install` builds the main branch.");
+                println!("No releases tagged yet; `oqman install` builds the main branch.");
             }
             for t in tags {
                 println!("{t}");
             }
         }
         "doctor" => doctor(&dirs, args.opts)?,
-        other => bail!("unknown command `{other}` (see openqup --help)"),
+        other => bail!("unknown command `{other}` (see oqman --help)"),
     }
     Ok(())
 }
 
-/// Only one openqup at a time works on the same home.
+/// Only one oqman at a time works on the same home.
 fn lock(dirs: &Dirs) -> Result<std::fs::File> {
     std::fs::create_dir_all(&dirs.home)?;
     let f = std::fs::File::create(dirs.home.join(".lock"))?;
     if f.try_lock().is_err() {
-        bail!("another openqup is running");
+        bail!("another oqman is running");
     }
     Ok(f)
 }
@@ -242,7 +242,7 @@ fn uninstall(dirs: &Dirs, purge: bool, yes: bool) -> Result<()> {
                 ui::info(format!("remove {}", p.display()));
             }
         }
-        None if !purge => bail!("OpenQ isn't installed by openqup (nothing to remove)."),
+        None if !purge => bail!("OpenQ isn't installed by oqman (nothing to remove)."),
         None => {}
     }
     if purge {
@@ -259,7 +259,7 @@ fn uninstall(dirs: &Dirs, purge: bool, yes: bool) -> Result<()> {
     platform::uninstall_extra()?;
     dirs.clear()?;
     if purge {
-        // The lock file and, on Windows, openqup's own running copy can't go while it runs.
+        // The lock file and, on Windows, oqman's own running copy can't go while it runs.
         for entry in std::fs::read_dir(&dirs.home)?.flatten() {
             let name = entry.file_name();
             if name == ".lock" || (cfg!(windows) && name == "bin") {
@@ -275,7 +275,7 @@ fn uninstall(dirs: &Dirs, purge: bool, yes: bool) -> Result<()> {
 fn doctor(dirs: &Dirs, given: Options) -> Result<()> {
     let state = dirs.load()?;
     let opts = state.as_ref().map(|s| s.options.clone()).unwrap_or(given);
-    ui::step("openqup");
+    ui::step("oqman");
     ui::info(format!("Version {} · home {}", env!("CARGO_PKG_VERSION"), dirs.home.display()));
     ui::info(format!(
         "GitHub token: {}",
@@ -300,9 +300,9 @@ fn doctor(dirs: &Dirs, given: Options) -> Result<()> {
     match toolchain::find(dirs) {
         Some(rust) => {
             let v = util::output(rust.command("rustc").arg("--version")).unwrap_or_else(|| "rustc doesn't run".into());
-            ui::info(format!("{v} ({})", if rust.private { "openqup's" } else { "system" }));
+            ui::info(format!("{v} ({})", if rust.private { "oqman's" } else { "system" }));
         }
-        None => ui::info("not installed (openqup installs it)"),
+        None => ui::info("not installed (oqman installs it)"),
     }
     ui::step("Build dependencies");
     platform::doctor(dirs, &opts);

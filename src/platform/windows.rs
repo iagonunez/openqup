@@ -56,7 +56,7 @@ fn ensure_msvc(http: &Http, dirs: &Dirs, yes: bool) -> Result<()> {
         return Ok(());
     }
     ui::info("Rust needs Microsoft's C++ Build Tools (the MSVC linker and the Windows SDK).");
-    ui::info("openqup will download Microsoft's installer and open it with the C++ tools selected.");
+    ui::info("oqman will download Microsoft's installer and open it with the C++ tools selected.");
     ui::info("Microsoft's licence applies; you accept it in Microsoft's installer:");
     ui::info("  https://visualstudio.microsoft.com/license-terms/vs2022-ga-diagnosticbuildtools/");
     ui::info("(If you already have Visual Studio, add the \"Desktop development with C++\" workload instead.)");
@@ -84,9 +84,9 @@ fn ensure_msvc(http: &Http, dirs: &Dirs, yes: bool) -> Result<()> {
 /// The Visual Studio bootstrapper changes with every update, so it has no fixed checksum: check
 /// that it carries a valid Microsoft Authenticode signature instead.
 fn check_microsoft_signature(exe: &Path) -> Result<()> {
-    let script = "$s = Get-AuthenticodeSignature -LiteralPath $env:OPENQUP_FILE; \
+    let script = "$s = Get-AuthenticodeSignature -LiteralPath $env:OQMAN_FILE; \
                   if ($s.Status -eq 'Valid' -and $s.SignerCertificate.Subject -match 'O=Microsoft Corporation') { 'ok' } else { $s.Status }";
-    let out = util::output(Command::new("powershell").args(["-NoProfile", "-NonInteractive", "-Command", script]).env("OPENQUP_FILE", exe));
+    let out = util::output(Command::new("powershell").args(["-NoProfile", "-NonInteractive", "-Command", script]).env("OQMAN_FILE", exe));
     if out.as_deref() != Some("ok") {
         let _ = std::fs::remove_file(exe);
         bail!("{} isn't signed by Microsoft ({}); deleted it.", exe.display(), out.unwrap_or_default());
@@ -150,7 +150,7 @@ fn installed_ffmpeg(dirs: &Dirs) -> Option<PathBuf> {
         .map(|e| e.path())
         .filter(|p| {
             let n = p.file_name().unwrap_or_default().to_string_lossy();
-            n.starts_with(&format!("ffmpeg-n{FFMPEG_SERIES}")) && n.contains("lgpl-shared") && p.join(".openqup-complete").is_file()
+            n.starts_with(&format!("ffmpeg-n{FFMPEG_SERIES}")) && n.contains("lgpl-shared") && p.join(".oqman-complete").is_file()
         })
         .collect();
     found.sort();
@@ -179,7 +179,7 @@ fn ensure_ffmpeg(http: &Http, dirs: &Dirs) -> Result<Ffmpeg> {
         bail!("unexpected layout in {name}");
     }
     std::fs::write(dir.join("BUILD.txt"), format!("{name} (BtbN release {tag})\n"))?;
-    std::fs::write(dir.join(".openqup-complete"), "")?;
+    std::fs::write(dir.join(".oqman-complete"), "")?;
     let _ = std::fs::remove_file(&zip);
     Ok(ffmpeg_info(&dir))
 }
@@ -240,9 +240,9 @@ fn powershell(script: &str, env: &[(&str, &Path)]) -> Result<()> {
     Ok(())
 }
 
-/// Where openqup keeps itself, so "Installed apps" can run its uninstaller later.
+/// Where oqman keeps itself, so "Installed apps" can run its uninstaller later.
 fn own_copy(dirs: &Dirs) -> Result<PathBuf> {
-    let dest = dirs.home.join(r"bin\openqup.exe");
+    let dest = dirs.home.join(r"bin\oqman.exe");
     let me = std::env::current_exe()?;
     let same = std::fs::canonicalize(&me).ok() == std::fs::canonicalize(&dest).ok();
     if !same {
@@ -256,7 +256,7 @@ fn own_copy(dirs: &Dirs) -> Result<PathBuf> {
 pub fn install(dirs: &Dirs, opts: &Options, built: &Built, _yes: bool) -> Result<Vec<PathBuf>> {
     ui::step("Installing");
     let dir = app_dir()?;
-    let staging = dir.with_file_name("OpenQ.openqup");
+    let staging = dir.with_file_name("OpenQ.oqman");
     util::remove(&staging)?;
     let exe = staging.join("OpenQ.exe");
     util::copy(&built.exe, &exe)?;
@@ -277,12 +277,12 @@ pub fn install(dirs: &Dirs, opts: &Options, built: &Built, _yes: bool) -> Result
 
     let link = start_menu_link()?;
     powershell(
-        "$s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:OPENQUP_LINK); \
-         $s.TargetPath = $env:OPENQUP_TARGET; $s.WorkingDirectory = $env:OPENQUP_DIR; $s.Save()",
-        &[("OPENQUP_LINK", &link), ("OPENQUP_TARGET", &exe), ("OPENQUP_DIR", &dir)],
+        "$s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:OQMAN_LINK); \
+         $s.TargetPath = $env:OQMAN_TARGET; $s.WorkingDirectory = $env:OQMAN_DIR; $s.Save()",
+        &[("OQMAN_LINK", &link), ("OQMAN_TARGET", &exe), ("OQMAN_DIR", &dir)],
     )?;
 
-    let openqup = own_copy(dirs)?;
+    let oqman = own_copy(dirs)?;
     let reg = |name: &str, kind: &str, value: &str| -> Result<()> {
         let out = Command::new("reg").args(["add", UNINSTALL_KEY, "/v", name, "/t", kind, "/d", value, "/f"]).output()?;
         if !out.status.success() {
@@ -295,7 +295,7 @@ pub fn install(dirs: &Dirs, opts: &Options, built: &Built, _yes: bool) -> Result
     reg("Publisher", "REG_SZ", "OpenQ")?;
     reg("DisplayIcon", "REG_SZ", &exe.display().to_string())?;
     reg("InstallLocation", "REG_SZ", &dir.display().to_string())?;
-    reg("UninstallString", "REG_SZ", &format!("\"{}\" uninstall", openqup.display()))?;
+    reg("UninstallString", "REG_SZ", &format!("\"{}\" uninstall", oqman.display()))?;
     reg("NoModify", "REG_DWORD", "1")?;
     reg("NoRepair", "REG_DWORD", "1")?;
     ui::info(format!("OpenQ {} installed: {}", built.version, exe.display()));

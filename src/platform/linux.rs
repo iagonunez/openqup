@@ -1,5 +1,5 @@
 //! Linux: build dependencies come from the distribution's package manager (FFmpeg included);
-//! the app goes to openqup's home with an `openq` link in `~/.local/bin` and a menu entry.
+//! the app goes to oqman's home with an `openq` link in `~/.local/bin` and a menu entry.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -11,7 +11,7 @@ use crate::net::Http;
 use crate::state::{Dirs, Options};
 use crate::{ui, util};
 
-/// Package families openqup knows how to install with.
+/// Package families oqman knows how to install with.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Family {
     /// Debian, Ubuntu, Mint, Pop!_OS, Raspberry Pi OS... (apt)
@@ -162,11 +162,11 @@ pub fn prepare(_dirs: &Dirs, _http: &Http, opts: &Options, yes: bool) -> Result<
         let names: Vec<_> = missing.iter().map(|n| n.what).collect();
         ui::info(format!("Missing: {}", names.join(", ")));
         let Some(family) = family else {
-            bail!("Unknown Linux distribution: install {} with your package manager and run openqup again.", names.join(", "));
+            bail!("Unknown Linux distribution: install {} with your package manager and run oqman again.", names.join(", "));
         };
         let pkgs: Vec<&str> = missing.iter().flat_map(|n| n.packages.iter().copied()).collect();
         let mut cmd = install_command(family, &pkgs);
-        ui::info(format!("openqup will run: {}", util::show(&cmd)));
+        ui::info(format!("oqman will run: {}", util::show(&cmd)));
         if family == Family::Fedora && missing.iter().any(|n| n.what == "FFmpeg") {
             ui::info("(On RHEL-like systems FFmpeg comes from EPEL / RPM Fusion, which must be enabled.)");
         }
@@ -180,7 +180,7 @@ pub fn prepare(_dirs: &Dirs, _http: &Http, opts: &Options, yes: bool) -> Result<
         let still: Vec<&Need> = list.iter().filter(|n| !n.present).collect();
         if still.iter().any(|n| !n.optional) {
             let names: Vec<_> = still.iter().map(|n| n.what).collect();
-            bail!("Still missing: {}. Install them and run openqup again.", names.join(", "));
+            bail!("Still missing: {}. Install them and run oqman again.", names.join(", "));
         }
     }
     let mut env = BuildEnv { no_default_features: opts.no_default_features, features: opts.features.clone(), ..Default::default() };
@@ -222,7 +222,7 @@ pub fn install(dirs: &Dirs, _opts: &Options, built: &Built, _yes: bool) -> Resul
     let link = util::home_dir()?.join(".local/bin/openq");
     let ours = std::fs::read_link(&link).is_ok_and(|t| t == exe);
     if std::fs::symlink_metadata(&link).is_ok() && !ours {
-        ui::warn(format!("{} exists and isn't openqup's link; left as is", link.display()));
+        ui::warn(format!("{} exists and isn't oqman's link; left as is", link.display()));
     } else {
         util::remove(&link)?;
         std::fs::create_dir_all(link.parent().unwrap())?;

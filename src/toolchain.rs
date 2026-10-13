@@ -1,5 +1,5 @@
 //! The Rust toolchain: the system's if it has a recent enough one, otherwise a private copy
-//! installed with the official `rustup-init` into openqup's home (the user's PATH and shell
+//! installed with the official `rustup-init` into oqman's home (the user's PATH and shell
 //! files are left alone).
 
 use std::ffi::OsString;
@@ -23,7 +23,7 @@ pub struct Rust {
     pub env: Vec<(String, OsString)>,
     /// Folder to put first on PATH (so build scripts find the same `rustc`).
     pub bin: Option<PathBuf>,
-    /// Installed by openqup.
+    /// Installed by oqman.
     pub private: bool,
 }
 
@@ -89,7 +89,7 @@ pub fn ensure(dirs: &Dirs, http: &Http, yes: bool) -> Result<Rust> {
     if let Some(rust) = find(dirs) {
         match rust.version() {
             Some(v) if v >= MIN_RUST => {
-                ui::info(format!("{} Rust {}.{} ({})", if rust.private { "openqup's" } else { "System" }, v.0, v.1, rust.cargo.display()));
+                ui::info(format!("{} Rust {}.{} ({})", if rust.private { "oqman's" } else { "System" }, v.0, v.1, rust.cargo.display()));
                 return Ok(rust);
             }
             v => {
@@ -102,7 +102,7 @@ pub fn ensure(dirs: &Dirs, http: &Http, yes: bool) -> Result<Rust> {
                     return Ok(rust);
                 }
                 if !rust.private {
-                    bail!("Update Rust (https://rustup.rs) and run openqup again.");
+                    bail!("Update Rust (https://rustup.rs) and run oqman again.");
                 }
             }
         }
@@ -110,10 +110,10 @@ pub fn ensure(dirs: &Dirs, http: &Http, yes: bool) -> Result<Rust> {
     install(dirs, http, yes)
 }
 
-/// Updates openqup's private toolchain (the system's is the user's to update).
+/// Updates oqman's private toolchain (the system's is the user's to update).
 pub fn update(rust: &Rust) -> Result<()> {
     if rust.private {
-        ui::step("Updating openqup's Rust toolchain");
+        ui::step("Updating oqman's Rust toolchain");
         util::run(rust.command("rustup").args(["update", "stable", "--no-self-update"]))?;
     }
     Ok(())
@@ -123,12 +123,12 @@ fn install(dirs: &Dirs, http: &Http, yes: bool) -> Result<Rust> {
     let triple = host_triple()?;
     ui::info("No Rust toolchain found.");
     ui::info(format!(
-        "openqup will install Rust (stable, minimal profile) with the official rustup-init into {}.\n    \
+        "oqman will install Rust (stable, minimal profile) with the official rustup-init into {}.\n    \
          Rust is free software (MIT / Apache-2.0). Your PATH and shell files are not changed.",
         dirs.rust().display()
     ));
     if !ui::confirm("Install Rust?", yes)? {
-        bail!("Rust is needed to build OpenQ. Install it from https://rustup.rs and run openqup again.");
+        bail!("Rust is needed to build OpenQ. Install it from https://rustup.rs and run oqman again.");
     }
     let exe = format!("rustup-init{}", std::env::consts::EXE_SUFFIX);
     let url = format!("https://static.rust-lang.org/rustup/dist/{triple}/{exe}");
@@ -145,7 +145,7 @@ fn install(dirs: &Dirs, http: &Http, yes: bool) -> Result<Rust> {
     cmd.args(["-y", "--no-modify-path", "--profile", "minimal", "--default-toolchain", "stable", "--default-host", triple]);
     cmd.envs(rust.env.iter().map(|(k, v)| (k, v)));
     util::run(&mut cmd)?;
-    ui::info("(openqup runs this toolchain itself: nothing needs adding to PATH.)");
+    ui::info("(oqman runs this toolchain itself: nothing needs adding to PATH.)");
     let _ = std::fs::remove_file(&init);
     if !rust.cargo.is_file() {
         bail!("rustup-init finished but {} is missing", rust.cargo.display());
@@ -161,7 +161,7 @@ pub fn host_triple() -> Result<&'static str> {
         ("macos", "x86_64") => "x86_64-apple-darwin",
         ("macos", "aarch64") => "aarch64-apple-darwin",
         ("windows", "x86_64") => "x86_64-pc-windows-msvc",
-        (os, arch) => bail!("openqup doesn't support {os} on {arch} yet"),
+        (os, arch) => bail!("oqman doesn't support {os} on {arch} yet"),
     })
 }
 
