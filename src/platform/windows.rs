@@ -268,6 +268,7 @@ pub fn install(dirs: &Dirs, opts: &Options, built: &Built, _yes: bool) -> Result
         }
     }
     super::write_licences(built, &staging)?;
+    super::install_python(built, &staging.join("python"))?;
     if let Some(thumbprint) = &opts.sign {
         sign(&exe, thumbprint)?;
     }

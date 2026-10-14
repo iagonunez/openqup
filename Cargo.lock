@@ -393,6 +393,7 @@ name = "oqman"
 version = "0.1.3"
 dependencies = [
  "anyhow",
+ "flate2",
  "serde",
  "serde_json",
  "sha2",

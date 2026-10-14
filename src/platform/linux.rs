@@ -214,6 +214,7 @@ pub fn install(dirs: &Dirs, _opts: &Options, built: &Built, _yes: bool) -> Resul
     util::remove(&staging)?;
     util::copy(&built.exe, &staging.join("openq"))?;
     super::write_licences(built, &staging.join("licenses"))?;
+    super::install_python(built, &staging.join("python"))?;
     util::remove(&app)?;
     std::fs::rename(&staging, &app)?;
     let exe = app.join("openq");

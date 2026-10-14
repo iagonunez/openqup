@@ -231,6 +231,7 @@ pub fn install(_dirs: &Dirs, opts: &Options, built: &Built, _yes: bool) -> Resul
         util::copy(&icns, &contents.join("Resources/OpenQ.icns"))?;
     }
     super::write_licences(built, &contents.join("Resources"))?;
+    super::install_python(built, &contents.join("Resources/python"))?;
     if let Some(ff) = &built.env.ffmpeg {
         copy_dylibs(&ff.dir.join("lib"), &contents.join("Frameworks"))?;
         util::run(Command::new("install_name_tool").args(["-add_rpath", "@executable_path/../Frameworks"]).arg(&exe))?;

@@ -73,6 +73,16 @@ pub struct Built<'a> {
     pub version: &'a str,
     /// The dependencies it was built with.
     pub env: &'a BuildEnv,
+    /// The sandboxed Python for effect scripts, unpacked (installed as `python/` next to the app).
+    pub python: Option<&'a Path>,
+}
+
+/// Installs the sandboxed Python (if the build uses it) into `dir`.
+pub fn install_python(built: &Built, dir: &Path) -> Result<()> {
+    if let Some(py) = built.python {
+        crate::python::install(py, dir)?;
+    }
+    Ok(())
 }
 
 /// Copies OpenQ's licence files (and the bundled FFmpeg's) into `dir`, as the licences of
@@ -89,6 +99,10 @@ pub fn write_licences(built: &Built, dir: &Path) -> Result<()> {
         for f in fonts.flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|e| e == "txt")) {
             util::copy(&f, &lic.join("fonts").join(f.file_name().unwrap()))?;
         }
+    }
+    if let Some(py) = built.python {
+        util::copy(&py.join("LICENSE"), &lic.join("python").join("LICENSE"))?;
+        std::fs::write(lic.join("python").join("README.md"), crate::python::licence_readme())?;
     }
     if let Some(ff) = &built.env.ffmpeg {
         let ffdir = lic.join("ffmpeg");

@@ -5,6 +5,7 @@
 
 mod net;
 mod platform;
+mod python;
 mod source;
 mod state;
 mod toolchain;
@@ -191,7 +192,8 @@ fn install(dirs: &Dirs, opts: &Options, yes: bool, update: Option<(&State, bool)
     };
     let version = state::source_version(&src.dir)?;
     let exe = build(dirs, &rust, &env, &src)?;
-    let built = Built { exe, src: &src.dir, version: &version, env: &env };
+    let python = if python::wanted(&src.dir, env.no_default_features, &env.features) { Some(python::prepare(dirs, &http)?) } else { None };
+    let built = Built { exe, src: &src.dir, version: &version, env: &env, python: python.as_deref() };
     let mut installed = platform::install(dirs, opts, &built, yes)?;
 
     // Anything an earlier install created that this one didn't recreate.
