@@ -235,15 +235,25 @@ pub fn install(dirs: &Dirs, _opts: &Options, built: &Built, _yes: bool) -> Resul
         }
     }
 
-    // The app icon in the user's icon theme (OpenQ 0.2 and later ship it), so the menu entry can name it.
+    // The app icon in the user's icon theme (OpenQ 0.2 and later ship it). The .desktop entry names the PNG by
+    // absolute path, so it shows even when the desktop doesn't rescan the theme; the theme copies serve the window.
     let icon_src = built.src.join("assets/icon/openq-256.png");
     let icon = if icon_src.is_file() {
-        let dest = data_home()?.join("icons/hicolor/256x256/apps/openq.png");
+        let theme = data_home()?.join("icons/hicolor");
+        let dest = theme.join("256x256/apps/openq.png");
         util::copy(&icon_src, &dest)?;
-        installed.push(dest);
-        "openq"
+        installed.push(dest.clone());
+        let svg_src = built.src.join("assets/icon/openq.svg");
+        if svg_src.is_file() {
+            let svg = theme.join("scalable/apps/openq.svg");
+            util::copy(&svg_src, &svg)?;
+            installed.push(svg);
+        }
+        // Refresh the caches; both tools are optional and missing ones are fine.
+        let _ = std::process::Command::new("gtk-update-icon-cache").args(["-f", "-t"]).arg(&theme).output();
+        dest.display().to_string()
     } else {
-        "applications-multimedia"
+        "applications-multimedia".to_string()
     };
 
     let desktop = data_home()?.join("applications/openq.desktop");
@@ -257,7 +267,10 @@ pub fn install(dirs: &Dirs, _opts: &Options, built: &Built, _yes: bool) -> Resul
             exe.display()
         ),
     )?;
-    installed.push(desktop);
+    installed.push(desktop.clone());
+    if let Some(dir) = desktop.parent() {
+        let _ = std::process::Command::new("update-desktop-database").arg(dir).output();
+    }
     ui::info(format!("OpenQ {} installed: {}", built.version, exe.display()));
     Ok(installed)
 }
