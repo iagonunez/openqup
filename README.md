@@ -65,7 +65,7 @@ with each update, is checked for a valid Microsoft Authenticode signature instea
 
 | Component | Systems | Source | Check | Licence |
 |---|---|---|---|---|
-| OpenQ source | all | GitHub (`api.github.com/.../tarball/<commit>` or `git fetch`) | exact commit id | Apache-2.0 + Commons Clause |
+| OpenQ source | all | GitHub (`api.github.com/.../tarball/<commit>` or `git fetch`) | exact commit id | Apache-2.0 |
 | Rust (rustup-init, stable toolchain) | all, if missing | `static.rust-lang.org` | published `.sha256` | MIT / Apache-2.0 |
 | Crates (OpenQ's dependencies) | all | crates.io, through cargo | `Cargo.lock` checksums | their own (listed in OpenQ's `THIRD_PARTY_LICENSES.md`) |
 | C compiler, clang, ALSA, udev, PipeWire, FFmpeg | Linux | your distribution's package manager (asks first, uses sudo) | the package manager's signatures | their own |
@@ -84,8 +84,8 @@ Notes:
   you. The FFmpeg licence, build details and OpenQ's notices are still installed with the app
   (`Licenses/`). If you copy the built app to others, you are distributing it: keep those files
   with it, and offer the FFmpeg source (the LGPL requires it). The Linux build uses your
-  distribution's FFmpeg, which is often GPL: fine for your own use, but don't redistribute such a
-  build (see OpenQ's `NOTICE.md`).
+  distribution's FFmpeg, which is often GPL: fine for your own use; a copy passed on falls under
+  GPL 3 as a whole, with its complete source (see OpenQ's `NOTICE.md`).
 
 ## Code signing
 
