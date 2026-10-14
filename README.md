@@ -40,7 +40,7 @@ If you already have Rust: `cargo install --locked --git https://github.com/iagon
 
 ```text
 oqman install [options]       build and install OpenQ (newest release unless --ref)
-oqman update [-y] [--force]   rebuild when the followed version has moved
+oqman update [-y] [--force]   rebuild when the followed version or oqman itself has changed
 oqman uninstall [--purge]     remove the app (--purge: also toolchain, dependencies, caches)
 oqman versions                list the versions that can be installed
 oqman doctor                  show what is installed and what the build needs

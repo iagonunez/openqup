@@ -94,6 +94,9 @@ pub struct State {
     pub version: String,
     /// When (Unix seconds).
     pub installed_at: u64,
+    /// The oqman version that installed it: `update` redoes the install when oqman has changed since (menu entry,
+    /// icons), even if OpenQ hasn't. Empty for installs made before oqman recorded it.
+    pub installer: String,
     /// Files and folders the installation created outside oqman's home (app, shortcuts).
     pub installed: Vec<PathBuf>,
 }

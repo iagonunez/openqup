@@ -25,7 +25,7 @@ oqman — installs OpenQ by building it from source
 
 Usage:
   oqman install [options]   Build and install OpenQ (the newest release, unless --ref)
-  oqman update [-y] [--force]  Rebuild if the followed version moved (same options as install)
+  oqman update [-y] [--force]  Rebuild if the followed version or oqman changed (same options as install)
   oqman uninstall [--purge] [-y]  Remove the app (--purge: also toolchain, FFmpeg, caches)
   oqman versions            List the versions that can be installed
   oqman doctor              Show what is installed and what the build needs
@@ -176,6 +176,7 @@ fn install(dirs: &Dirs, opts: &Options, yes: bool, update: Option<(&State, bool)
         && opts.source.is_none()
         && saved.commit == commit
         && saved.options == *opts
+        && saved.installer == env!("CARGO_PKG_VERSION")
     {
         ui::info(format!("OpenQ {} is up to date.", saved.version));
         return Ok(());
@@ -203,7 +204,7 @@ fn install(dirs: &Dirs, opts: &Options, yes: bool, update: Option<(&State, bool)
         }
     }
     installed.dedup();
-    dirs.save(&State { options: opts.clone(), commit: src.commit.clone(), version: version.clone(), installed_at: platform::now(), installed })?;
+    dirs.save(&State { options: opts.clone(), commit: src.commit.clone(), version: version.clone(), installed_at: platform::now(), installer: env!("CARGO_PKG_VERSION").into(), installed })?;
     ui::step(format!("Done: OpenQ {version} ({})", src.label));
     Ok(())
 }
