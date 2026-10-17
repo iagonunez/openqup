@@ -31,8 +31,40 @@ pub struct BuildEnv {
     pub no_default_features: bool,
     /// Cargo features to turn on.
     pub features: Vec<String>,
+    /// Default features to leave out (no PipeWire headers, `--no-lighting`); see [`BuildEnv::resolve`].
+    pub without: Vec<String>,
     /// The FFmpeg that gets bundled with the app (macOS / Windows), if any.
     pub ffmpeg: Option<Ffmpeg>,
+}
+
+impl BuildEnv {
+    /// Turn `without` into a feature list for the source's `Cargo.toml`: its default features
+    /// minus those, plus `features`. Defaults are read from the source, so a version's own list
+    /// (lighting, scripting, ...) is kept whatever it holds.
+    pub fn resolve(&mut self, src: &Path) {
+        if self.without.is_empty() {
+            return;
+        }
+        let defaults = std::fs::read_to_string(src.join("Cargo.toml")).ok().and_then(|t| default_features(&t)).unwrap_or_default();
+        if self.without.iter().any(|w| w == "lighting") && !defaults.iter().any(|d| d == "lighting") {
+            crate::ui::info("This OpenQ version has no separate lighting feature: building it as it is.");
+        }
+        if !self.no_default_features {
+            self.no_default_features = true;
+            let keep: Vec<String> = defaults.into_iter().filter(|d| !self.without.contains(d) && !self.features.contains(d)).collect();
+            self.features.splice(0..0, keep);
+        }
+        let without = std::mem::take(&mut self.without);
+        self.features.retain(|f| !without.contains(f));
+    }
+}
+
+/// The `default = [...]` list of a `Cargo.toml`'s `[features]` table.
+fn default_features(toml: &str) -> Option<Vec<String>> {
+    let table = &toml[toml.find("\n[features]")?..];
+    let start = table.find("\ndefault = [")? + "\ndefault = [".len();
+    let list = &table[start..start + table[start..].find(']')?];
+    Some(list.split(',').map(|f| f.trim().trim_matches('"').to_string()).filter(|f| !f.is_empty()).collect())
 }
 
 /// A bundled FFmpeg build.
@@ -134,4 +166,34 @@ fn ffmpeg_readme(origin: &str) -> String {
 /// Seconds since 1970, for the state file.
 pub fn now() -> u64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const TOML: &str = "[package]\nname = \"openq\"\n\n[features]\ndefault = [\"video\", \"pipewire\", \"lighting\"]\nlighting = [\"scripting\"]\n";
+
+    fn resolved(no_default_features: bool, features: &[&str], without: &[&str]) -> (bool, Vec<String>) {
+        let dir = std::env::temp_dir().join(format!("oqman-features-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("Cargo.toml"), TOML).unwrap();
+        let mut env = BuildEnv {
+            no_default_features,
+            features: features.iter().map(|s| s.to_string()).collect(),
+            without: without.iter().map(|s| s.to_string()).collect(),
+            ..Default::default()
+        };
+        env.resolve(&dir);
+        (env.no_default_features, env.features)
+    }
+
+    #[test]
+    fn defaults_minus_left_out_features() {
+        assert_eq!(default_features(TOML).unwrap(), ["video", "pipewire", "lighting"]);
+        assert_eq!(resolved(false, &[], &[]), (false, vec![]));
+        assert_eq!(resolved(false, &[], &["lighting"]), (true, vec!["video".into(), "pipewire".into()]));
+        assert_eq!(resolved(false, &["fault-injection"], &["pipewire", "lighting"]), (true, vec!["video".into(), "fault-injection".into()]));
+        assert_eq!(resolved(true, &["video", "lighting"], &["lighting"]), (true, vec!["video".into()]));
+    }
 }

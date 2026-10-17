@@ -37,7 +37,7 @@ encodings/__init__ encodings/aliases encodings/utf_8 encodings/utf_8_sig encodin
 /// Whether the OpenQ source uses effect scripts (and so wants the interpreter).
 pub fn wanted(src: &Path, no_default_features: bool, features: &[String]) -> bool {
     let has_feature = std::fs::read_to_string(src.join("Cargo.toml")).is_ok_and(|t| t.contains("\nscripting = ["));
-    has_feature && (!no_default_features || features.iter().any(|f| f == "scripting"))
+    has_feature && (!no_default_features || features.iter().any(|f| f == "scripting" || f == "lighting"))
 }
 
 /// Download (or reuse) the interpreter and unpack the kept files into `<home>/python-wasi/<version>`.

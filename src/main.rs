@@ -39,6 +39,8 @@ Install options:
   --source <dir>              Build a local source folder instead of downloading
   --features <a,b>            Extra cargo features
   --no-default-features       No default features (no video, no PipeWire), plus --features
+  --no-lighting               Cues only: leave out the lighting workspace (Lighting view, Light
+                              cues, effect scripts, fixture downloads); --lighting brings it back
   --system-ffmpeg             macOS: link the system's (Homebrew) FFmpeg instead of compiling one
   --sign <identity>           Code-sign the app. macOS: keychain identity, e.g.
                               \"Developer ID Application: Name (TEAMID)\" (default: ad hoc).
@@ -85,6 +87,8 @@ fn parse(mut args: impl Iterator<Item = String>) -> Result<Args> {
                 a.given = true;
             }
             "--no-default-features" => (a.opts.no_default_features, a.given) = (true, true),
+            "--no-lighting" => (a.opts.no_lighting, a.given) = (true, true),
+            "--lighting" => (a.opts.no_lighting, a.given) = (false, true),
             "--system-ffmpeg" => (a.opts.system_ffmpeg, a.given) = (true, true),
             "--sign" => (a.opts.sign, a.given) = (Some(value("--sign")?), true),
             "--notarize" => (a.opts.notarize, a.given) = (Some(value("--notarize")?), true),
@@ -186,12 +190,17 @@ fn install(dirs: &Dirs, opts: &Options, yes: bool, update: Option<(&State, bool)
     if update.is_some() {
         toolchain::update(&rust)?;
     }
-    let env = platform::prepare(dirs, &http, opts, yes)?;
+    let mut env = platform::prepare(dirs, &http, opts, yes)?;
     let src = match &opts.source {
         Some(dir) => source::Source { dir: dir.clone(), commit: commit.clone(), label: reference.clone() },
         None => source::fetch(&http, dirs, opts, &reference, &commit)?,
     };
     let version = state::source_version(&src.dir)?;
+    if opts.no_lighting {
+        env.without.push("lighting".into());
+        env.features.retain(|f| f != "lighting");
+    }
+    env.resolve(&src.dir);
     let exe = build(dirs, &rust, &env, &src)?;
     let python = if python::wanted(&src.dir, env.no_default_features, &env.features) { Some(python::prepare(dirs, &http)?) } else { None };
     let built = Built { exe, src: &src.dir, version: &version, env: &env, python: python.as_deref() };
@@ -327,6 +336,9 @@ mod tests {
         assert!(a.yes && a.given && a.opts.no_default_features);
         assert_eq!(a.opts.reference.as_deref(), Some("v0.2.0"));
         assert_eq!(a.opts.features, ["video", "fault-injection"]);
+        assert!(!a.opts.no_lighting);
+        assert!(args("install --no-lighting").unwrap().opts.no_lighting);
+        assert!(!args("update --no-lighting --lighting").unwrap().opts.no_lighting);
         let u = args("update -y").unwrap();
         assert!(!u.given);
         assert!(args("install --notarize prof").is_err());

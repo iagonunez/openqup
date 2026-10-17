@@ -186,11 +186,8 @@ pub fn prepare(_dirs: &Dirs, _http: &Http, opts: &Options, yes: bool) -> Result<
     let mut env = BuildEnv { no_default_features: opts.no_default_features, features: opts.features.clone(), ..Default::default() };
     if list.iter().any(|n| n.what == "PipeWire" && !n.present) {
         ui::warn("Building without PipeWire (ALSA only).");
-        env.no_default_features = true;
+        env.without.push("pipewire".into());
         env.features.retain(|f| f != "pipewire");
-        if wanted.video && !env.features.iter().any(|f| f == "video") {
-            env.features.push("video".into());
-        }
     }
     if let Some(lib) = find_libclang() {
         env.env.push(("LIBCLANG_PATH".into(), lib.parent().unwrap_or(Path::new("/")).into()));

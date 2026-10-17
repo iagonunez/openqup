@@ -119,6 +119,9 @@ pub struct Options {
     pub features: Vec<String>,
     /// Build without cargo's default features (no video, no PipeWire), plus `features`.
     pub no_default_features: bool,
+    /// Cues only: build OpenQ without its default `lighting` feature (no Lighting view, effect
+    /// scripts or fixture downloads, no Python interpreter installed).
+    pub no_lighting: bool,
     /// macOS: use the FFmpeg found by pkg-config (Homebrew) instead of building an LGPL one.
     pub system_ffmpeg: bool,
     /// Code-signing identity: macOS keychain identity name, or Windows certificate SHA-1
@@ -137,6 +140,7 @@ impl Default for Options {
             source: None,
             features: Vec::new(),
             no_default_features: false,
+            no_lighting: false,
             system_ffmpeg: false,
             sign: None,
             notarize: None,

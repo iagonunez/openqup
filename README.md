@@ -48,6 +48,8 @@ oqman doctor                  show what is installed and what the build needs
 
 Install options: `--ref <tag|branch|commit>`, `--repo <owner/name>`, `--git <url>`,
 `--source <dir>` (build a local checkout), `--features a,b`, `--no-default-features`,
+`--no-lighting` (cues only: no Lighting view, Light cues, effect scripts or fixture downloads, and no
+Python download; `--lighting` brings it back),
 `--system-ffmpeg` (macOS, use Homebrew's), `--sign <identity>`, `--notarize <profile>`, `-y`.
 `update` keeps the options of the last install unless you give new ones.
 
