@@ -48,8 +48,8 @@ oqman doctor                  show what is installed and what the build needs
 
 Install options: `--ref <tag|branch|commit>`, `--repo <owner/name>`, `--git <url>`,
 `--source <dir>` (build a local checkout), `--features a,b`, `--no-default-features`,
-`--no-lighting` (cues only: no Lighting view, Light cues, effect scripts or fixture downloads, and no
-Python download; `--lighting` brings it back),
+`--no-lighting` (cues only: no Lighting view, Light cues or fixture downloads; `--lighting` brings it
+back),
 `--system-ffmpeg` (macOS, use Homebrew's), `--sign <identity>`, `--notarize <profile>`, `-y`.
 `update` keeps the options of the last install unless you give new ones.
 
@@ -77,15 +77,17 @@ with each update, is checked for a valid Microsoft Authenticode signature instea
 | Visual Studio Build Tools (C++) | Windows, if missing | Microsoft (`aka.ms/vs/17/release/vs_BuildTools.exe`), opened in Microsoft's installer where you accept Microsoft's licence | Microsoft Authenticode signature | Microsoft's licence |
 | LLVM 23.1.3 (libclang only) | Windows, if missing | GitHub `llvm/llvm-project` release (MSI unpacked, not installed) | pinned SHA-256 | Apache-2.0 WITH LLVM-exception |
 | FFmpeg 9.0 shared, LGPL | Windows | GitHub `BtbN/FFmpeg-Builds` (`lgpl-shared` only; oqman refuses other variants) | GitHub's SHA-256 digest | LGPL-2.1+ |
-| CPython 3.15.0 for WebAssembly (WASI) | all (OpenQ with lighting effect scripts) | GitHub `brettcannon/cpython-wasi-build` release (built by a CPython core developer) | pinned SHA-256 | PSF License |
+| CPython 3.15.0 for WebAssembly (WASI) | all, only for OpenQ 0.3 (lighting effect scripts) | GitHub `brettcannon/cpython-wasi-build` release (built by a CPython core developer) | pinned SHA-256 | PSF License |
 
 Notes:
 
-- The Python is **not** a normal Python: OpenQ runs it inside its own WebAssembly sandbox
-  (wasmtime) only to generate lighting effects. It can't read or write your files, use the
-  network or start programs. oqman installs `python.wasm` and only the computation part of the
-  standard library (about 2.6 MB) as `python/` next to the app, with its licence in the app's
-  licence folder.
+- The Python is only installed for OpenQ 0.3; later versions make custom lighting effects from
+  formulas OpenQ works out itself, so nothing is downloaded (and an interpreter oqman unpacked
+  for 0.3 is removed). For 0.3 it is **not** a normal Python: OpenQ runs it inside its own
+  WebAssembly sandbox (wasmtime) only to generate lighting effects. It can't read or write your
+  files, use the network or start programs. oqman installs `python.wasm` and only the
+  computation part of the standard library (about 2.6 MB) as `python/` next to the app, with its
+  licence in the app's licence folder.
 
 - oqman never accepts a licence on your behalf where the vendor asks for acceptance (Apple,
   Microsoft): it opens the vendor's own installer. `-y` only answers oqman's own questions.
@@ -140,8 +142,8 @@ python3 -I tools/third_party_licenses.py                            # after depe
   and Intel) and Windows runners, checks the result and uninstalls it.
 - Pinned versions and checksums (FFmpeg, NASM, LLVM) are constants at the top of
   `src/platform/macos.rs` and `src/platform/windows.rs`; the FFmpeg series must match what
-  OpenQ's `ffmpeg-next` supports. The sandboxed Python is pinned in `src/python.rs` (keep it and
-  its module list in step with OpenQ's `tools/fetch_python_wasi.py`).
+  OpenQ's `ffmpeg-next` supports. The sandboxed Python for OpenQ 0.3 is pinned in `src/python.rs`
+  (as OpenQ 0.3's `tools/fetch_python_wasi.py` had it).
 
 ## Licence
 

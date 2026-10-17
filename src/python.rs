@@ -1,13 +1,18 @@
-//! The sandboxed Python that OpenQ's lighting effect scripts run in.
+//! The sandboxed Python that OpenQ 0.3's lighting effect scripts run in.
 //!
-//! OpenQ runs effect scripts in CPython built for WebAssembly (WASI) inside its own wasmtime
+//! Only OpenQ 0.3 uses it: later versions make custom effects from formulas OpenQ works out itself
+//! (and Python effects are written outside OpenQ and imported as effect files), so [`wanted`] is
+//! false for them and nothing is downloaded. Kept so `--ref v0.3.0` (and the 0.3 release while it
+//! is the newest) still installs complete.
+//!
+//! OpenQ 0.3 runs effect scripts in CPython built for WebAssembly (WASI) inside its own wasmtime
 //! sandbox: no files besides a read-only standard library, no network, no other programs, capped
 //! memory and run time. oqman installs that interpreter as `python/` next to the app: the
 //! `python.wasm` module, its licence and only the part of the standard library scripts need.
 //! It is pinned by version and SHA-256 (builds by a CPython core developer,
 //! <https://github.com/brettcannon/cpython-wasi-build>).
 //!
-//! Keep `VERSION`, `URL`, `SHA256` and `KEEP` in step with OpenQ's `tools/fetch_python_wasi.py`.
+//! `VERSION`, `URL`, `SHA256` and `KEEP` match OpenQ 0.3's `tools/fetch_python_wasi.py`.
 
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -34,10 +39,17 @@ traceback types typing warnings weakref importlib pathlib
 encodings/__init__ encodings/aliases encodings/utf_8 encodings/utf_8_sig encodings/ascii encodings/latin_1
 ";
 
-/// Whether the OpenQ source uses effect scripts (and so wants the interpreter).
+/// Whether the OpenQ source uses effect scripts (and so wants the interpreter): only OpenQ 0.3, the
+/// only version with a `scripting` feature.
 pub fn wanted(src: &Path, no_default_features: bool, features: &[String]) -> bool {
     let has_feature = std::fs::read_to_string(src.join("Cargo.toml")).is_ok_and(|t| t.contains("\nscripting = ["));
     has_feature && (!no_default_features || features.iter().any(|f| f == "scripting" || f == "lighting"))
+}
+
+/// Remove the unpacked interpreter (after an install that doesn't use it). The download stays in
+/// the download cache like the other downloads.
+pub fn forget(dirs: &Dirs) -> Result<()> {
+    util::remove(&dirs.home.join("python-wasi"))
 }
 
 /// Download (or reuse) the interpreter and unpack the kept files into `<home>/python-wasi/<version>`.

@@ -105,7 +105,8 @@ pub struct Built<'a> {
     pub version: &'a str,
     /// The dependencies it was built with.
     pub env: &'a BuildEnv,
-    /// The sandboxed Python for effect scripts, unpacked (installed as `python/` next to the app).
+    /// The sandboxed Python for OpenQ 0.3's effect scripts, unpacked (installed as `python/` next to
+    /// the app); `None` for later versions.
     pub python: Option<&'a Path>,
 }
 

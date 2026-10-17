@@ -40,7 +40,7 @@ Install options:
   --features <a,b>            Extra cargo features
   --no-default-features       No default features (no video, no PipeWire), plus --features
   --no-lighting               Cues only: leave out the lighting workspace (Lighting view, Light
-                              cues, effect scripts, fixture downloads); --lighting brings it back
+                              cues, fixture downloads); --lighting brings it back
   --system-ffmpeg             macOS: link the system's (Homebrew) FFmpeg instead of compiling one
   --sign <identity>           Code-sign the app. macOS: keychain identity, e.g.
                               \"Developer ID Application: Name (TEAMID)\" (default: ad hoc).
@@ -202,7 +202,13 @@ fn install(dirs: &Dirs, opts: &Options, yes: bool, update: Option<(&State, bool)
     }
     env.resolve(&src.dir);
     let exe = build(dirs, &rust, &env, &src)?;
-    let python = if python::wanted(&src.dir, env.no_default_features, &env.features) { Some(python::prepare(dirs, &http)?) } else { None };
+    let python = if python::wanted(&src.dir, env.no_default_features, &env.features) {
+        Some(python::prepare(dirs, &http)?)
+    } else {
+        // OpenQ after 0.3 makes effects from formulas: an interpreter kept for 0.3 isn't needed.
+        python::forget(dirs)?;
+        None
+    };
     let built = Built { exe, src: &src.dir, version: &version, env: &env, python: python.as_deref() };
     let mut installed = platform::install(dirs, opts, &built, yes)?;
 
